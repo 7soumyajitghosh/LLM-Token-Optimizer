@@ -16,12 +16,15 @@ function env(key: string): string | undefined {
 }
 
 async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout>;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, rej) => {
     timer = setTimeout(() => rej(new Error(`Model request timed out after ${ms}ms`)), ms);
   });
-  try { return await Promise.race([p, timeout]); }
-  finally { clearTimeout(timer!); }
+  try {
+    return await Promise.race([p, timeout]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
 }
 
 // Deterministic offline provider so the Brain works with zero API keys.

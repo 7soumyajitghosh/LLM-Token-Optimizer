@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { CodePerceptionEngine } from "../coding/perception/CodePerceptionEngine";
 import { CodebaseGraph } from "../coding/graph/CodebaseGraph";
 import { SymbolGraph } from "../coding/graph/SymbolGraph";
-import { FlowAnalyzer } from "../coding/graph/FlowAnalyzer";
 import { HumanCodeReader, IntentEngine, ArchitectureDetector } from "../coding/understanding/Understanding";
 import { CodebaseMemory } from "../coding/memory/CodebaseMemory";
 import { CodingStyleMemory } from "../coding/style/CodingStyleMemory";

@@ -28,7 +28,7 @@ export function routeSource(input: string, mimeHint?: string): AnimationSource {
     return { type: "code", source: input, mimeHint };
   }
   // Local website directory / html file fallback
-  if (/\.html?(\?|#|$)/i.test(s) || /\/$/.test(s) || /^[.\/\\]/.test(s)) {
+  if (/\.html?(\?|#|$)/i.test(s) || /\/$/.test(s) || /^[./\\]/.test(s)) {
     return { type: "website", source: input, mimeHint };
   }
   return { type: "code", source: input, mimeHint };

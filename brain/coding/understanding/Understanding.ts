@@ -23,7 +23,7 @@ export class HumanCodeReader {
     const body = sliceOf(file, symbol.line);
     const dependencies = [
       ...file.imports.map((i) => i.to),
-      ...(node?.calls.map((c) => c.split("::").pop() ?? c) ?? []),
+      ...calleesOf(symbols, id).map((c) => c.split("::").pop() ?? c),
     ].filter((v, i, a) => v && a.indexOf(v) === i).slice(0, 15);
     const dependents = [...new Set([
       ...callersOf(symbols, id).map((c) => c.split("::").pop() ?? c),

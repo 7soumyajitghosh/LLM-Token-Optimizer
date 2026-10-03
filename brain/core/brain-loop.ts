@@ -72,7 +72,7 @@ export async function runBrainLoop(brain: Brain, goal: string, opts: LoopOptions
     if (!isTerminal(emit(advancePhase(s, "failed")))) {
       // advancePhase guarantees a terminal state above; guard keeps the
       // isTerminal import load-bearing so regressions are caught.
-      throw new Error("brain-loop did not reach a terminal state");
+      throw new Error("brain-loop did not reach a terminal state", { cause: e });
     }
   }
   return s;

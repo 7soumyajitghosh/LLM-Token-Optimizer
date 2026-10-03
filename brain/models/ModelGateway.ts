@@ -28,7 +28,9 @@ export class ModelGateway {
   }
   register(p: ModelProvider): void { this.providers.set(p.providerName, p); }
   providerFor(spec: ModelSpec): ModelProvider {
-    return this.providers.get(spec.provider) ?? this.providers.get("mock")!;
+    const provider = this.providers.get(spec.provider) ?? this.providers.get("mock");
+    if (!provider) throw new Error(`No model provider registered for "${spec.provider}" (and no mock fallback).`);
+    return provider;
   }
   async complete(spec: ModelSpec, req: ModelRequest): Promise<ModelResponse> {
     const provider = this.providerFor(spec);

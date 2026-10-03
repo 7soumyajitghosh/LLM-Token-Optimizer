@@ -34,7 +34,7 @@ function parseTsLike(path: string, content: string, language: SupportedLanguage)
   const f = base(path, language, content);
   const lines = content.split("\n");
   const patterns: Array<{ re: RegExp; kind: ParsedSymbol["kind"] }> = [
-    { re: /^\s*(?:export\s+(?:default\s+)?)?(?:async\s+)?function\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)\s*(?::\s*([A-Za-z0-9_<>\[\]| ]+))?/, kind: "function" },
+    { re: /^\s*(?:export\s+(?:default\s+)?)?(?:async\s+)?function\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)\s*(?::\s*([A-Za-z0-9_<>[\]| ]+))?/, kind: "function" },
     { re: /^\s*(?:export\s+)?(?:default\s+)?class\s+([A-Za-z0-9_]+)/, kind: "class" },
     { re: /^\s*(?:export\s+)?interface\s+([A-Za-z0-9_]+)/, kind: "interface" },
     { re: /^\s*(?:export\s+)?type\s+([A-Za-z0-9_]+)\s*=/, kind: "type" },
@@ -107,7 +107,7 @@ function parseJava(path: string, content: string): ParsedFile {
   lines.forEach((line, i) => {
     let m = line.match(/^\s*(?:public|private|protected)?\s*(?:static\s+)?(?:final\s+)?class\s+([A-Za-z0-9_]+)/);
     if (m) { f.symbols.push({ name: m[1], kind: "class", file: path, line: i + 1, signature: line.trim().slice(0, 240), exported: true }); return; }
-    m = line.match(/^\s*(?:public|private|protected)?\s*(?:static\s+)?(?:[\w<>\[\]]+)\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)/);
+    m = line.match(/^\s*(?:public|private|protected)?\s*(?:static\s+)?(?:[\w<>[\]]+)\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)/);
     if (m && !/^\s*(if|for|while|switch|catch)\b/.test(line)) {
       f.symbols.push({ name: m[1], kind: "method", file: path, line: i + 1, signature: line.trim().slice(0, 240) });
       return;
