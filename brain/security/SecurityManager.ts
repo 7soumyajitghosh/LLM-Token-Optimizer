@@ -1,5 +1,6 @@
 // Defense in depth: input sanitization, prompt-injection heuristics, tool gating, audit log.
 import { BRAIN_SECURITY_LIMITS } from "../config/constants";
+import { scanCodeForDangerousPatterns, type PatternFinding } from "./patterns/index";
 export interface AuditEntry { at: number; actor: string; action: string; detail: string; allowed: boolean; }
 
 const INJECTION_PATTERNS = [
@@ -89,4 +90,16 @@ export class SecurityManager {
   }
 
   getAudit(): AuditEntry[] { return [...this.audit]; }
+
+  /**
+   * Instant dangerous-pattern scan over generated/edited code (layer-1 review).
+   * Findings are also recorded in the audit trail.
+   */
+  scanCode(code: string, language?: string): PatternFinding[] {
+    const findings = scanCodeForDangerousPatterns(code, language);
+    for (const f of findings) {
+      this.log("agent", `code.${f.patternId}`, `${f.severity} at line ${f.line}`, f.severity === "medium");
+    }
+    return findings;
+  }
 }
