@@ -55,6 +55,22 @@ Duplicate copies (`brain/ai-brain/*`, `brain/animation-brain/*`) and
 backward-compat shims (`src/ai-brain`, `src/animation-brain`) were removed;
 UI imports point directly at `brain/`.
 
+## Adopted from external systems (7 concepts, original implementations)
+
+| Source | Concept adopted | Brain module |
+|---|---|---|
+| `affaan-m/ECC` | Continuous learning (wins → lessons), session summaries | `memory/learning` |
+| `obra/superpowers` | RED-GREEN-REFACTOR TDD, 4-phase systematic debugging, spec-first gate | `cognition/tdd`, `debugging/systematic`, `skills` (`spec-first`) |
+| `thedotmack/claude-mem` | Progressive-disclosure retrieval (index → details), typed observations | `MemoryManager.searchIndex`, `memory/learning` |
+| `DietrichGebert/ponytail` | YAGNI ladder, over-engineering delete-list, never-cut guards | `coding/simplicity` |
+| `usestrix/strix` | OWASP Top 10 coverage, CVSS-like severity ranking | `security/owasp` |
+| `alibaba/open-code-review` | Deterministic bundling + per-file rule matching (pipeline × agent) | `review/bundling` |
+| `anthropics/security-guidance` | Instant dangerous-pattern scan, inline-justification exclusions | `security/patterns` (+ `SecurityManager.scanCode`) |
+
+Skills-first entry: `SkillRegistry` in `brain/skills` (`tdd-cycle`,
+`systematic-debug`, `simplicity-review`, `owasp-review`,
+`session-learning`, `spec-first`).
+
 ## Usage
 
 ```ts

@@ -24,7 +24,7 @@ export interface PatternFinding {
 
 /** ~25 known-dangerous patterns. Runs synchronously on every edit/write path. */
 export const DANGEROUS_PATTERNS: DangerousPattern[] = [
-  { id: "yaml-load", title: "Unsafe YAML deserialization", severity: "critical", regex: /yaml\.(safe_load|load)\s*\(/, message: "yaml.load without SafeLoader can execute arbitrary code. Use yaml.safe_load." },
+  { id: "yaml-load", title: "Unsafe YAML deserialization", severity: "critical", regex: /(?<!safe_)yaml\.load\s*\(/, message: "yaml.load without SafeLoader can execute arbitrary code. Use yaml.safe_load." },
   { id: "pickle-load", title: "Pickle deserialization", severity: "critical", regex: /\b(pickle|cPickle)\.(load|loads|Unpickler)\b/, message: "Pickle executes code on load. Never unpickle untrusted data." },
   { id: "torch-load", title: "Unsafe torch.load", severity: "high", regex: /torch\.load\s*\(/, message: "torch.load defaults are unsafe. Pass weights_only=True." },
   { id: "marshal-load", title: "Marshal/shelve deserialization", severity: "high", regex: /\b(marshal\.load|shelve\.open)\s*\(/, message: "marshal/shelve execute code on load. Avoid with untrusted data." },

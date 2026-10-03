@@ -7,6 +7,7 @@ import { TddCycle } from "../cognition/tdd/index";
 import { SystematicDebug } from "../debugging/systematic/index";
 import { extractLessons, summarizeSession, toPreview } from "../memory/learning/index";
 import { SkillRegistry } from "../skills/index";
+import { CodePerceptionEngine } from "../coding/perception/CodePerceptionEngine";
 import { MemoryManager } from "../memory/MemoryManager";
 import { SecurityManager } from "../security/SecurityManager";
 
@@ -172,6 +173,19 @@ describe("learning + progressive disclosure (ECC + claude-mem)", () => {
   });
 });
 
+describe("perception failure visibility", () => {
+  it("records parse failures instead of swallowing them", () => {
+    const engine = new CodePerceptionEngine();
+    expect(engine.lastError()).toBeNull();
+    const parsed = engine.perceiveFile("a.ts", "function ok() {}");
+    expect(parsed.symbols.length).toBeGreaterThan(0);
+    expect(engine.lastError()).toBeNull();
+    engine.register({ language: "rust", parse: () => { throw new Error("boom"); } });
+    const fallback = engine.perceiveFile("b.rs", "fn main() {}", "rust");
+    expect(fallback.symbols).toHaveLength(0);
+    expect(engine.lastError()).toBe("boom");
+  });
+});
 describe("skills registry (ECC + superpowers)", () => {
   it("suggests tdd for feature work and debug for bugs", () => {
     const r = new SkillRegistry();

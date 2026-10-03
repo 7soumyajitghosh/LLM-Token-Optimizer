@@ -195,6 +195,7 @@ export function detectLanguage(path: string, content?: string): SupportedLanguag
 // §1 engine
 export class CodePerceptionEngine {
   private parsers = new Map<SupportedLanguage, LanguageParser>();
+  private lastParseError: string | null = null;
 
   constructor() {
     this.register({ language: "typescript", parse: (p, c) => parseTsLike(p, c, "typescript") });
@@ -220,10 +221,19 @@ export class CodePerceptionEngine {
     const parser = this.parsers.get(lang);
     if (!parser) return base(path, "unknown", content);
     try {
+      this.lastParseError = null;
       return parser.parse(path, content);
-    } catch {
+    } catch (e) {
+      // Regex parsers must never break perception; record the failure for
+      // callers (see lastError()) and fall back to empty symbols.
+      this.lastParseError = e instanceof Error ? e.message : String(e);
       return base(path, lang, content);
     }
+  }
+
+  /** Last parser failure message, or null when the last parse succeeded. */
+  lastError(): string | null {
+    return this.lastParseError;
   }
 
   perceiveFolder(files: Array<{ path: string; content: string }>): ParsedFile[] {

@@ -20,6 +20,20 @@ function num(v: string | undefined, d: number): number {
 
 const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
 
+/**
+ * Read Vite's import.meta.env when running in a Vite/browser bundle.
+ * Single blessed `as any` site: import.meta has no env typing without vite/client.
+ */
+export function readViteEnv(): Record<string, string> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((import.meta as any)?.env as Record<string, string> | undefined) ?? {};
+  } catch {
+    // Non-Vite runtimes have no import.meta.env — env probing must not throw.
+    return {};
+  }
+}
+
 function logLevel(v: string | undefined): BrainConfig["logLevel"] {
   return (LOG_LEVELS as readonly string[]).includes(v ?? "") ? (v as BrainConfig["logLevel"]) : "info";
 }
@@ -32,15 +46,7 @@ function logLevel(v: string | undefined): BrainConfig["logLevel"] {
 export function loadConfig(): BrainConfig {
   const env = (typeof process !== "undefined" ? process.env ?? {} : {}) as Record<string, string | undefined>;
   // import.meta.env support for Vite
-  const viteEnv = (() => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const m = (import.meta as any)?.env as Record<string, string> | undefined;
-      return m ?? {};
-    } catch {
-      return {};
-    }
-  })();
+  const viteEnv = readViteEnv();
   const get = (k: string): string | undefined => env[k] ?? viteEnv[k] ?? viteEnv[`VITE_${k}`];
   return {
     defaultProvider: get("BRAIN_DEFAULT_PROVIDER") ?? "mock",

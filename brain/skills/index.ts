@@ -29,6 +29,7 @@ function matches(goal: string, triggers: string[]): boolean {
       try {
         return new RegExp(t.slice(1, -1), "i").test(goal);
       } catch {
+        // Invalid trigger regex in a custom skill — treat as non-match, never throw.
         return false;
       }
     }
@@ -72,7 +73,7 @@ const BUILT_INS: Skill[] = [
     name: "owasp-review",
     description: "OWASP Top 10 security review with CVSS-like severity ranking.",
     triggers: ["secur", "owasp", "pentest", "vulnerab", "audit", "auth"],
-    steps: (ctx) => [
+    steps: () => [
       { title: "PATTERN-SCAN", detail: "Run the dangerous-pattern scan for instant findings." },
       { title: "CLASSIFY", detail: "Map each finding to an OWASP category." },
       { title: "RANK", detail: "Score by exploitability × impact × exposure; fix critical/high first." },

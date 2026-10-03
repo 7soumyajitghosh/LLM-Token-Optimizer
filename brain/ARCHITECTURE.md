@@ -45,6 +45,12 @@ Barrels (import these, not deep files): `brain/core`, `brain/config`,
 `brain/reasoning`, `brain/planner`, `brain/rag`, `brain/token`.
 Tunables live in `brain/config/constants.ts`; IDs come from `brain/core/ids.ts`.
 
+Strength modules (original code, externally-inspired concepts):
+`security/patterns` (instant danger scan), `security/owasp` (OWASP + CVSS-like),
+`review/bundling` (deterministic review units), `coding/simplicity` (YAGNI ladder),
+`cognition/tdd` (RED-GREEN-REFACTOR), `debugging/systematic` (4-phase),
+`memory/learning` (lessons + summaries + index view), `skills` (skill registry).
+
 `UnifiedBrain` exposes them via getters (`memory`, `tools`, `gateway`,
 `security`, `obs`, `codebase`, `rag`) so coding and animation paths share
 state, budgets, and audit trails.

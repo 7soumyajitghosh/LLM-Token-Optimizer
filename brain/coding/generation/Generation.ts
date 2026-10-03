@@ -15,7 +15,7 @@ export class CodeGenerationBrain {
     return [
       {
         title: "Types + interfaces first",
-        code: `// Step 1 — contracts for: ${request.slice(0, 80)}\n// Style: ${styleGuidance.split("\n")[0]?.slice(0, 100) ?? "match repo"}\n// TODO(host): emit minimal exported types in ${target}`,
+        code: `// Step 1 — contracts for: ${request.slice(0, 80)}\n// Style: ${styleGuidance.split("\n")[0]?.slice(0, 100) ?? "match repo"}\n// Host action: emit minimal exported types in ${target} (host-assisted; see stage() docs)`,
         checks: ["typecheck passes", "no new `any`", "names match repo conventions"],
       },
       {

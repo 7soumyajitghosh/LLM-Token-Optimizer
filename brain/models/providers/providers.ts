@@ -1,4 +1,5 @@
 import type { ModelRequest, ModelResponse, ModelSpec } from "../../core/types";
+import { readViteEnv } from "../../config/defaults";
 
 export interface ModelProvider {
   readonly providerName: string;
@@ -10,9 +11,12 @@ function env(key: string): string | undefined {
   try {
     const p = (typeof process !== "undefined" ? process.env?.[key] : undefined) as string | undefined;
     if (p) return p;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (import.meta as any)?.env?.[key] ?? (import.meta as any)?.env?.[`VITE_${key}`];
-  } catch { return undefined; }
+    const vite = readViteEnv();
+    return vite[key] ?? vite[`VITE_${key}`];
+  } catch {
+    // Env probing must never throw (SSR, workers, restricted sandboxes).
+    return undefined;
+  }
 }
 
 async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {

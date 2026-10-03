@@ -62,8 +62,20 @@ export function bundleFiles(paths: string[]): FileBundle[] {
   const unique = [...new Set(paths)];
   const bundles: FileBundle[] = [];
   let n = 0;
+  // First pass: attach test files to their source so sources are not double-bundled.
+  const attachedSources = new Set<string>();
+  for (const t of unique) {
+    if (kindOf(t) !== "test") continue;
+    const src = unique.find((p) => p !== t && kindOf(p) === "source" && stem(p) === stem(t));
+    if (src) {
+      attachedSources.add(src);
+      bundles.push({ id: `bundle_${n++}`, paths: [src, t], kind: "source", rules: ["general-quality", "test-quality", "test-coverage"], reason: "Tests bundled with their source files" });
+    }
+  }
+  const attachedTests = new Set(bundles.flatMap((b) => b.paths));
   const byDir = new Map<string, string[]>();
   for (const p of unique) {
+    if (attachedTests.has(p)) continue;
     const k = `${dirOf(p)}::${kindOf(p)}`;
     const arr = byDir.get(k) ?? [];
     arr.push(p);
@@ -76,19 +88,8 @@ export function bundleFiles(paths: string[]): FileBundle[] {
       continue;
     }
     if (kind === "test") {
-      // Attach tests to their source bundle when the source changed too.
-      const withSource: string[] = [];
-      const orphan: string[] = [];
-      for (const t of group) {
-        const s = stem(t);
-        const src = unique.find((p) => p !== t && stem(p) === s && kindOf(p) === "source");
-        if (src) withSource.push(t, src);
-        else orphan.push(t);
-      }
-      if (withSource.length) {
-        bundles.push({ id: `bundle_${n++}`, paths: [...new Set(withSource)], kind: "source", rules: ["general-quality", "test-quality", "test-coverage"], reason: "Tests bundled with their source files" });
-      }
-      if (orphan.length) bundles.push({ id: `bundle_${n++}`, paths: orphan, kind: "test", rules: ["test-quality"], reason: `Standalone tests in ${dir}` });
+      // Standalone tests whose source did not change.
+      bundles.push({ id: `bundle_${n++}`, paths: group, kind: "test", rules: ["test-quality"], reason: `Standalone tests in ${dir}` });
       continue;
     }
     const rules = [...new Set(group.flatMap(matchReviewRules))];
