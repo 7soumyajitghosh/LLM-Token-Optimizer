@@ -1,4 +1,5 @@
 import type { MemoryQuery, MemoryRecord, MemoryScope, RankedMemory } from "../core/types";
+import type { CompactIndexEntry } from "./learning/index";
 import { uid } from "../core/ids";
 import { BRAIN_LIMITS, BRAIN_MEMORY_TUNING } from "../config/constants";
 import { HashEmbeddingProvider, cosineSimilarity, type EmbeddingProvider } from "./embeddings";
@@ -63,6 +64,23 @@ export class MemoryManager {
 
   async retrieve(query: string, topK = 6): Promise<RankedMemory[]> {
     return this.search({ text: query, topK });
+  }
+
+  /**
+   * Layer-1 progressive disclosure (claude-mem style): compact index entries
+   * (~50-100 tokens each) without full content. Fetch full details only for
+   * relevant ids via search(). ~10x token savings on large recalls.
+   */
+  async searchIndex(q: MemoryQuery): Promise<CompactIndexEntry[]> {
+    const ranked = await this.search(q);
+    return ranked.map((r) => ({
+      id: r.id,
+      scope: r.scope,
+      preview: r.content.replace(/\s+/g, " ").trim().slice(0, 160),
+      importance: r.importance,
+      score: Math.round(r.score * 1000) / 1000,
+      createdAt: r.createdAt,
+    }));
   }
 
   async search(q: MemoryQuery): Promise<RankedMemory[]> {
