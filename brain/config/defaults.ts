@@ -15,9 +15,20 @@ export interface BrainConfig {
 
 function num(v: string | undefined, d: number): number {
   const n = Number(v);
-  return Number.isFinite(n) ? n : d;
+  return Number.isFinite(n) && n >= 0 ? n : d;
 }
 
+const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
+
+function logLevel(v: string | undefined): BrainConfig["logLevel"] {
+  return (LOG_LEVELS as readonly string[]).includes(v ?? "") ? (v as BrainConfig["logLevel"]) : "info";
+}
+
+/**
+ * Load brain configuration from `BRAIN_*` environment variables.
+ * Vite frontends may also provide `VITE_BRAIN_*` equivalents; bare
+ * `BRAIN_*` always wins when both are set.
+ */
 export function loadConfig(): BrainConfig {
   const env = (typeof process !== "undefined" ? process.env ?? {} : {}) as Record<string, string | undefined>;
   // import.meta.env support for Vite
@@ -26,9 +37,11 @@ export function loadConfig(): BrainConfig {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const m = (import.meta as any)?.env as Record<string, string> | undefined;
       return m ?? {};
-    } catch { return {}; }
+    } catch {
+      return {};
+    }
   })();
-  const get = (k: string) => env[k] ?? viteEnv[k] ?? viteEnv[`VITE_${k}`];
+  const get = (k: string): string | undefined => env[k] ?? viteEnv[k] ?? viteEnv[`VITE_${k}`];
   return {
     defaultProvider: get("BRAIN_DEFAULT_PROVIDER") ?? "mock",
     models: defaultModels(),
@@ -41,7 +54,7 @@ export function loadConfig(): BrainConfig {
     memoryTopK: num(get("BRAIN_MEMORY_TOPK"), 6),
     enableSecurity: (get("BRAIN_ENABLE_SECURITY") ?? "true") !== "false",
     enableEvaluation: (get("BRAIN_ENABLE_EVAL") ?? "true") !== "false",
-    logLevel: ((get("BRAIN_LOG_LEVEL") ?? "info") as BrainConfig["logLevel"]),
+    logLevel: logLevel(get("BRAIN_LOG_LEVEL")),
   };
 }
 

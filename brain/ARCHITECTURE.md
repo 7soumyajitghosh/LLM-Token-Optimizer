@@ -40,6 +40,11 @@
   + `brain/agents/` + `brain/security/` + `brain/observability/`
   + `brain/cognition/` + `brain/loops/`
 
+Barrels (import these, not deep files): `brain/core`, `brain/config`,
+`brain/schemas`, `brain/models`, `brain/memory`, `brain/tools`,
+`brain/reasoning`, `brain/planner`, `brain/rag`, `brain/token`.
+Tunables live in `brain/config/constants.ts`; IDs come from `brain/core/ids.ts`.
+
 `UnifiedBrain` exposes them via getters (`memory`, `tools`, `gateway`,
 `security`, `obs`, `codebase`, `rag`) so coding and animation paths share
 state, budgets, and audit trails.
@@ -71,6 +76,7 @@ FIND DIFFERENCE → IMPROVE → RENDER AGAIN
 - Old `src/ai-brain/**` and `src/animation-brain/**` shims removed;
   UI imports point directly at `brain/**`.
 - New files only ADD: `brain/core/{brain,brain-loop,task-state,
-  cognitive-state,orchestrator}.ts`, `brain/schemas/*`,
-  `brain/config/brain-config.ts`, `brain/loops/*/loop.ts`,
-  per-folder barrels, `brain/index.ts`.
+  cognitive-state,orchestrator,ids,index}.ts`, `brain/schemas/*`,
+  `brain/config/{brain-config,defaults,constants,index}.ts`, `brain/loops/*/loop.ts`,
+  per-folder barrels (`core`, `config`, `schemas`, `models`, `memory`,
+  `tools`, `reasoning`, `planner`, `rag`, `token`), `brain/index.ts`.

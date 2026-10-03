@@ -11,6 +11,20 @@ import type { TaskState } from "./task-state";
 
 export type Capability = "coding" | "animation" | "general";
 
+/** Animation goal-snapshot returned when no task loop is needed. */
+export interface AnimationUnderstanding {
+  capability: "animation";
+  understanding: unknown;
+}
+
+/** Task-loop result for coding/general goals. */
+export interface CapabilityTask {
+  capability: Exclude<Capability, "animation"> | "animation";
+  task: TaskState;
+}
+
+export type OrchestratorResult = AnimationUnderstanding | CapabilityTask;
+
 export function routeCapability(goal: string): Capability {
   const g = goal.toLowerCase();
   if (/animat|motion|easing|keyframe|timeline|gsap|framer|transition|scroll-trigger|adl/.test(g)) return "animation";
@@ -31,17 +45,24 @@ export class BrainOrchestrator {
   get security() { return this.brain.security; }
   get obs() { return this.brain.obs; }
 
-  async run(goal: string): Promise<{ capability: Capability; task: TaskState } | { capability: "animation"; understanding: unknown }> {
+  async run(goal: string): Promise<OrchestratorResult> {
+    if (!goal.trim()) throw new Error("goal must be a non-empty string");
     const cap = routeCapability(goal);
-    if (cap === "animation" && /understand|analy[sz]e|describe|what.*happen/.test(goal.toLowerCase())) {
-      return { capability: "animation", understanding: this.animation.analyze(goal) };
+    try {
+      if (cap === "animation" && /understand|analy[sz]e|describe|what.*happen/.test(goal.toLowerCase())) {
+        return { capability: "animation", understanding: this.animation.analyze(goal) };
+      }
+      if (cap === "animation" && /recreat|reconstruct|reproduc|improve.*anim/.test(goal.toLowerCase())) {
+        const r = await runAnimationLoop(this.animation, goal);
+        return { capability: "animation", understanding: r };
+      }
+      const task = await runBrainLoop(this.brain, goal);
+      return { capability: cap, task };
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.brain.obs.log("error", "error", { where: "orchestrator.run", message });
+      throw e;
     }
-    if (cap === "animation" && /recreat|reconstruct|reproduc|improve.*anim/.test(goal.toLowerCase())) {
-      const r = await runAnimationLoop(this.animation, goal);
-      return { capability: "animation", understanding: r };
-    }
-    const task = await runBrainLoop(this.brain, goal);
-    return { capability: cap, task };
   }
 }
 

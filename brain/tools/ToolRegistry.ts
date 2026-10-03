@@ -7,6 +7,17 @@ export interface ToolHandler {
 
 type AnyRecord = Record<string, unknown>;
 
+/** Safely read a string field from unknown tool input. */
+function strField(input: unknown, key: string, maxChars = 2000): string {
+  if (typeof input === "string") return input.slice(0, maxChars);
+  if (input && typeof input === "object") {
+    const v = (input as AnyRecord)[key];
+    if (typeof v === "string") return v.slice(0, maxChars);
+    if (v !== undefined) return String(v).slice(0, maxChars);
+  }
+  return "";
+}
+
 export class ToolRegistry {
   private tools = new Map<string, ToolHandler>();
 
@@ -42,7 +53,7 @@ export function builtinTools(): ToolHandler[] {
         riskLevel: "low",
       },
       async execute(input: unknown) {
-        const q = (input as AnyRecord)?.query ?? String(input ?? "");
+        const q = strField(input, "query", 200);
         const apiKey = (typeof process !== "undefined" ? process.env?.WEB_SEARCH_API_KEY : undefined) as string | undefined;
         if (!apiKey) {
           return { results: [], note: `No WEB_SEARCH_API_KEY configured. Search plan for: ${String(q).slice(0, 200)}` };
@@ -61,7 +72,9 @@ export function builtinTools(): ToolHandler[] {
       },
       async execute(input: unknown) {
         const r = (input ?? {}) as AnyRecord;
-        return { plan: `Filesystem ${String(r.operation ?? "read")} on ${String(r.path ?? ".")} — host must approve medium-risk tools.` };
+        const operation = typeof r.operation === "string" ? r.operation.slice(0, 32) : "read";
+        const path = typeof r.path === "string" ? r.path.slice(0, 512) : ".";
+        return { plan: `Filesystem ${operation} on ${path} — host must approve medium-risk tools.` };
       },
     },
     {
@@ -74,8 +87,8 @@ export function builtinTools(): ToolHandler[] {
         riskLevel: "medium",
       },
       async execute(input: unknown) {
-        const expr = String((input as AnyRecord)?.expression ?? input ?? "").slice(0, 200);
-        if (!/^[0-9+\-*/().\s%^]+$/.test(expr)) throw new Error("Only numeric expressions allowed in sandbox.");
+        const expr = strField(input, "expression", 200);
+        if (!/^[0-9+\-*/().\s%^]+$/.test(expr) || !expr.trim()) throw new Error("Only numeric expressions allowed in sandbox.");
         // eslint-disable-next-line no-new-func
         const value = Function(`"use strict"; return (${expr})`)() as unknown;
         if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("Expression did not evaluate to a finite number.");
@@ -92,7 +105,7 @@ export function builtinTools(): ToolHandler[] {
         riskLevel: "low",
       },
       async execute(input: unknown) {
-        const text = String((input as AnyRecord)?.text ?? input ?? "");
+        const text = strField(input, "text", 20000);
         const sentences = text.split(/(?<=[.!?])\s+/).slice(0, 5);
         return { summary: sentences.join(" ").slice(0, 1500), chars: text.length };
       },

@@ -7,8 +7,9 @@ Reasoning + Agents + Tools + Model Router = ONE unified `brain/`.
 
 ## Layout
 
-- `core/` — `brain.ts` (UnifiedBrain), `brain-loop.ts`, `cognitive-state.ts`,
-  `task-state.ts`, `orchestrator.ts` + preserved `brain/Brain.ts`
+- `core/` — `brain/Brain.ts` (`Brain`), `brain.ts` (`UnifiedBrain` wrapper),
+  `brain-loop.ts`, `cognitive-state.ts` (barrel over `state/CognitiveState.ts`),
+  `task-state.ts`, `orchestrator.ts`, `ids.ts`, `index.ts` (canonical barrel)
 - `perception/` — input / code / repository / website / animation / visual
 - `understanding/` — code / intent / architecture / data-flow / control-flow /
   dependency-analysis / animation (7 stages)
@@ -28,6 +29,16 @@ Reasoning + Agents + Tools + Model Router = ONE unified `brain/`.
   (no duplicates; coding and animation brains use the same instances)
 - `loops/` — build / test / debug / improvement / animation / autonomous
 - `security/`, `performance/`, `observability/`, `schemas/`, `config/`
+- `config/constants.ts` — ALL tunables (limits, weights, thresholds) in one place
+- `core/ids.ts` — collision-free ID generation (`crypto.randomUUID` + fallback)
+
+## Import rules
+
+- Prefer barrels: `./core`, `./config`, `./schemas`, `./models`, `./memory`,
+  `./tools`, `./reasoning`, `./planner`, `./rag`, `./token`.
+- Never import `ToolRegistry` from `tools/browser` (that barrel is the
+  browser-tool contract, not the registry).
+- IDs: always use `uid(prefix)` from `core/ids` — never `Math.random`/`Date.now` inline.
 
 ## Preserved capabilities (19)
 
@@ -48,10 +59,22 @@ UI imports point directly at `brain/`.
 
 ```ts
 import { UnifiedBrain, getOrchestrator } from "./brain/index";
-// or: import { Brain } from "./brain/core/brain/Brain";
+// Barrels (preferred):
+//   import { Brain } from "./brain/core";
+//   import { loadConfig, BRAIN_LIMITS } from "./brain/config";
 const brain = new UnifiedBrain();
 await brain.run({ goal: "Explain model routing" });
 brain.analyzeAnimation("<div>...</div>");
+```
+
+## Build / verify
+
+```bash
+npm install
+npm run typecheck   # tsc --noEmit
+npm run lint        # eslint (no-explicit-any, no-non-null-assertion)
+npm run test        # vitest run
+npm run build       # tsc emit to dist/
 ```
 
 Central loops:

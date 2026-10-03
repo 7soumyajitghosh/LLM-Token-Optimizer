@@ -43,7 +43,12 @@ export class Observability {
       this.metrics.errors.push({ where: String(p?.where ?? "?"), message: String(p?.message ?? "error"), at: Date.now() });
     }
     for (const h of this.handlers) {
-      try { h(event, payload); } catch { /* never break brain on observer */ }
+      try {
+        h(event, payload);
+      } catch (handlerError) {
+        // Observers must never break the brain; report at debug level only.
+        if (this.level === "debug") console.debug("[brain:debug] observer failed", handlerError);
+      }
     }
     const line = `[brain:${level}] ${event}`;
     if (level === "error") console.error(line, payload);

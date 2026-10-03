@@ -1,4 +1,5 @@
 // Defense in depth: input sanitization, prompt-injection heuristics, tool gating, audit log.
+import { BRAIN_SECURITY_LIMITS } from "../config/constants";
 export interface AuditEntry { at: number; actor: string; action: string; detail: string; allowed: boolean; }
 
 const INJECTION_PATTERNS = [
@@ -60,9 +61,9 @@ export class SecurityManager {
     return { allowed: true, reason: "allowed" };
   }
 
-  checkRateLimit(actor: string, maxPerMinute = 30): boolean {
+  checkRateLimit(actor: string, maxPerMinute = BRAIN_SECURITY_LIMITS.rateLimitPerMinute): boolean {
     const now = Date.now();
-    const window = (this.rateWindow.get(actor) ?? []).filter((t) => now - t < 60_000);
+    const window = (this.rateWindow.get(actor) ?? []).filter((t) => now - t < BRAIN_SECURITY_LIMITS.rateWindowMs);
     window.push(now);
     this.rateWindow.set(actor, window);
     const ok = window.length <= maxPerMinute;
@@ -76,7 +77,10 @@ export class SecurityManager {
       let clean = s;
       for (const re of SECRET_PATTERNS) clean = clean.replace(re, "[REDACTED]");
       return JSON.parse(clean);
-    } catch { return "[unserializable]"; }
+    } catch {
+      // JSON round-trip failed (circular structure or non-serializable value).
+      return "[unserializable]";
+    }
   }
 
   private log(actor: string, action: string, detail: string, allowed: boolean): void {
