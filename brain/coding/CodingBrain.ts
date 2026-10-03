@@ -154,16 +154,16 @@ export class CodingBrain {
       ? this.history.interpret({ file: targetFile, currentCode: relevant[0]?.content.slice(0, 500) ?? "", log: req.history })
       : null;
 
-    // §28 autonomous perfection loop (bounded, stops when no meaningful gain)
+    // §28 autonomous perfection pass (bounded: one recorded pass per run;
+    // further passes require real host code changes, so loop state is explicit)
     let passes = 0;
     let currentScore = review.score;
     const weaknesses: string[] = [...review.findings.filter((f) => f.severity !== "info").map((f) => f.message)];
-    while (passes < this.maxPasses && weaknesses.length > 0 && (sec.some((s) => s.severity === "critical" || s.severity === "high") || currentScore < 0.85)) {
+    const needsWork = weaknesses.length > 0 && (sec.some((s) => s.severity === "critical" || s.severity === "high") || currentScore < 0.85);
+    if (passes < this.maxPasses && needsWork) {
       passes++;
       weaknesses.shift(); // host would fix + re-test here; orchestrator records the pass
       currentScore = Math.min(0.95, currentScore + 0.05);
-      if (passes >= this.maxPasses) break;
-      break; // one recorded pass per run without host edits; further passes need real code changes
     }
 
     // TEST AGAIN + VERIFY + UPDATE MEMORY (§4)
