@@ -19,6 +19,8 @@ export interface Skill {
   description: string;
   /** Matched against the goal (case-insensitive substring or /regex/). */
   triggers: string[];
+  /** Skip conditions (ECC frontmatter style): when matched, the skill stays off. */
+  skipWhen?: string[];
   steps: (ctx: SkillContext) => SkillStep[];
 }
 
@@ -122,7 +124,7 @@ export class SkillRegistry {
 
   /** Suggest skills whose triggers match the goal (ordered by match strength). */
   suggest(goal: string): Skill[] {
-    return this.list().filter((s) => matches(goal, s.triggers));
+    return this.list().filter((s) => matches(goal, s.triggers) && !matches(goal, s.skipWhen ?? []));
   }
 
   run(name: string, ctx: SkillContext): SkillStep[] {
@@ -130,4 +132,42 @@ export class SkillRegistry {
     if (!skill) throw new Error(`Unknown skill: ${name}`);
     return skill.steps(ctx);
   }
+}
+
+// ---- Plan → chain compiler (ECC plan-orchestrate) ----
+
+export type PlanTag = "design" | "impl" | "impl+security" | "impl+db" | "build" | "review";
+
+/** Tag → deterministic agent chain. Chains ≤4; impl chains MUST end with a reviewer. */
+const PLAN_CHAINS: Record<PlanTag, string[]> = {
+  design: ["planner", "architect"],
+  impl: ["tdd-guide", "code-reviewer"],
+  "impl+security": ["tdd-guide", "code-reviewer", "security-reviewer"],
+  "impl+db": ["tdd-guide", "database-reviewer", "code-reviewer"],
+  build: ["build-resolver"],
+  review: ["code-reviewer", "security-reviewer"],
+};
+
+/** Classify a goal into a plan tag from trigger words. */
+export function tagPlan(goal: string): PlanTag {
+  const g = goal.toLowerCase();
+  const security = /encrypt|auth|secret|login|token|permission|secur/.test(g);
+  const db = /schema|migration|sql|database|prisma/.test(g);
+  if (/architect|rfc|design|spec/.test(g)) return "design";
+  if (/audit|verify|review/.test(g)) return "review";
+  if (/compile|build fail|ci fail|broken build/.test(g)) return "build";
+  if (/implement|build|add|create|feature/.test(g)) {
+    if (security) return "impl+security";
+    if (db) return "impl+db";
+    return "impl";
+  }
+  if (security || db) return security ? "impl+security" : "impl+db";
+  return "impl";
+}
+
+/** Compile a goal into its agent chain (deduped, ≤4, reviewer-terminated for impl). */
+export function buildChain(goal: string): { tag: PlanTag; chain: string[] } {
+  const tag = tagPlan(goal);
+  const chain = [...new Set(PLAN_CHAINS[tag])].slice(0, 4);
+  return { tag, chain };
 }

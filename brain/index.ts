@@ -37,10 +37,12 @@ export {
   ANIMATION_TUNING,
 } from "./config/constants";
 export { getBrain, createBrain, runBrain } from "./api/index";
-export { scanCodeForDangerousPatterns, isPatternClean, DANGEROUS_PATTERNS, type PatternFinding } from "./security/patterns/index";
-export { OWASP_TOP_10, scoreSeverity, classifyOwasp, rankFindings, type ScoredFinding } from "./security/owasp/index";
-export { bundleFiles, matchReviewRules, type FileBundle } from "./review/bundling/index";
-export { SIMPLICITY_LADDER, NEVER_CUT, evaluateAgainstLadder, detectOverEngineering } from "./coding/simplicity/index";
-export { TddCycle, type TddPhase } from "./cognition/tdd/index";
+export { scanCodeForDangerousPatterns, isPatternClean, loadCustomPatterns, isReDoSSafe, DANGEROUS_PATTERNS, type PatternFinding, type CustomPattern } from "./security/patterns/index";
+export { OWASP_TOP_10, scoreSeverity, classifyOwasp, rankFindings, resolveCwe, validateFinding, type ScoredFinding, type ValidatedFinding, type FindingClosure } from "./security/owasp/index";
+export { bundleFiles, matchReviewRules, selectFile, matchGlob, resolveRules, capBundleSize, filterForPrecision, type FileBundle, type RuleLayer } from "./review/bundling/index";
+export { SIMPLICITY_LADDER, NEVER_CUT, AUDIT_HUNT, evaluateAgainstLadder, detectOverEngineering, formatFinding, netLinesSaved, mayDelete, type SimplicityFinding } from "./coding/simplicity/index";
+export { TddCycle, TDD_CHECKLIST, TDD_RED_FLAGS, type TddPhase } from "./cognition/tdd/index";
 export { SystematicDebug, type DebugPhase } from "./debugging/systematic/index";
-export { SkillRegistry, type Skill, type SkillStep } from "./skills/index";
+export { gateWrite, recordFacts, type FactChecklist } from "./cognition/gateguard/index";
+export { verifyCompletion, type Claim, type VerificationReport } from "./testing/verification/index";
+export { SkillRegistry, tagPlan, buildChain, type Skill, type SkillStep, type PlanTag } from "./skills/index";

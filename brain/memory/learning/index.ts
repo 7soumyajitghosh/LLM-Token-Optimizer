@@ -88,8 +88,7 @@ export function extractLessons(outcome: SessionOutcome): Lesson[] {
 }
 
 /** Render a session summary for future sessions (ECC save-session equivalent). */
-export function summarizeSession(outcome: SessionOutcome, lessons: Lesson[] = []): string {
-  const lines = [
+export function summarizeSession(outcome: SessionOutcome, lessons: Lesson[] = []): string {  const lines = [
     `# Session ${outcome.taskId}`,
     ``,
     `Goal: ${outcome.goal}`,
@@ -106,4 +105,61 @@ export function summarizeSession(outcome: SessionOutcome, lessons: Lesson[] = []
     lines.push(``);
   }
   return lines.join("\n");
+}
+
+// ---- Claude-mem observation record (facts + narrative + concepts) ----
+
+export type ObservationType =
+  | "bugfix" | "feature" | "refactor" | "change" | "discovery"
+  | "decision" | "security_alert" | "security_note" | "sensitive";
+
+/** Closed concept set: bare keywords describing what the observation teaches. */
+export type ObservationConcept =
+  | "how-it-works" | "why-it-exists" | "what-changed"
+  | "problem-solution" | "gotcha" | "pattern" | "trade-off";
+
+export interface ObservationRecord {
+  type: ObservationType;
+  title: string;
+  subtitle: string;
+  /** Exactly the durable facts: self-contained, no pronouns, file:fn:value. */
+  facts: string[];
+  narrative: string;
+  concepts: ObservationConcept[];
+  filesRead: string[];
+  filesModified: string[];
+  createdAt: number;
+}
+
+/** Noise gate: routine progress with no durable content is skipped, never stored. */
+export function shouldSkipObservation(cand: { facts: string[]; narrative: string }): { skip: boolean; reason?: string } {
+  if (!cand.facts.length && cand.narrative.trim().length < 80) {
+    return { skip: true, reason: "noise: no durable facts" };
+  }
+  return { skip: false };
+}
+
+/** Strip <private> blocks: privacy-tagged content is never stored. */
+export function stripPrivate(text: string): string {
+  return text.replace(/<private>[\s\S]*?<\/private>/gi, "").trim();
+}
+
+const CHARS_PER_TOKEN = 4;
+
+/** Token estimate for an observation (chars/4 over rendered fields). */
+export function estimateObservationTokens(o: Pick<ObservationRecord, "title" | "subtitle" | "narrative" | "facts">): number {
+  const chars = o.title.length + o.subtitle.length + o.narrative.length + JSON.stringify(o.facts).length;
+  return Math.ceil(chars / CHARS_PER_TOKEN);
+}
+
+/**
+ * Fit observations into a char budget without splitting items:
+ * newest summary first, then halve counts until it fits.
+ */
+export function fitContextBudget<T>(items: T[], render: (t: T) => string, maxChars = 10000): T[] {
+  let kept = [...items];
+  while (kept.length > 1 && kept.map(render).join("\n").length > maxChars) {
+    kept = kept.slice(0, Math.max(1, Math.ceil(kept.length / 2)));
+  }
+  return kept;
 }

@@ -1,12 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { scanCodeForDangerousPatterns, isPatternClean, DANGEROUS_PATTERNS } from "../security/patterns/index";
-import { OWASP_TOP_10, scoreSeverity, classifyOwasp, rankFindings } from "../security/owasp/index";
-import { bundleFiles, matchReviewRules } from "../review/bundling/index";
-import { SIMPLICITY_LADDER, evaluateAgainstLadder, detectOverEngineering } from "../coding/simplicity/index";
-import { TddCycle } from "../cognition/tdd/index";
+import { scanCodeForDangerousPatterns, isPatternClean, loadCustomPatterns, isReDoSSafe, DANGEROUS_PATTERNS } from "../security/patterns/index";
+import { OWASP_TOP_10, scoreSeverity, classifyOwasp, rankFindings, resolveCwe, validateFinding } from "../security/owasp/index";
+import { bundleFiles, matchReviewRules, selectFile, matchGlob, resolveRules, capBundleSize, filterForPrecision } from "../review/bundling/index";
+import { SIMPLICITY_LADDER, AUDIT_HUNT, evaluateAgainstLadder, detectOverEngineering, formatFinding, netLinesSaved, mayDelete } from "../coding/simplicity/index";
+import { TddCycle, TDD_CHECKLIST, TDD_RED_FLAGS } from "../cognition/tdd/index";
 import { SystematicDebug } from "../debugging/systematic/index";
-import { extractLessons, summarizeSession, toPreview } from "../memory/learning/index";
-import { SkillRegistry } from "../skills/index";
+import { extractLessons, summarizeSession, toPreview, shouldSkipObservation, stripPrivate, estimateObservationTokens, fitContextBudget } from "../memory/learning/index";
+import { SkillRegistry, tagPlan, buildChain } from "../skills/index";
+import { gateWrite, recordFacts, __resetGateForTests } from "../cognition/gateguard/index";
+import { verifyCompletion } from "../testing/verification/index";
 import { CodePerceptionEngine } from "../coding/perception/CodePerceptionEngine";
 import { MemoryManager } from "../memory/MemoryManager";
 import { SecurityManager } from "../security/SecurityManager";
@@ -198,5 +200,131 @@ describe("skills registry (ECC + superpowers)", () => {
     const steps = r.run("owasp-review", { goal: "audit auth" });
     expect(steps.map((s) => s.title)).toEqual(["PATTERN-SCAN", "CLASSIFY", "RANK"]);
     expect(() => r.run("nope", { goal: "x" })).toThrow("Unknown skill");
+  });
+  it("compiles goals into reviewer-terminated chains", () => {
+    expect(tagPlan("implement dark mode")).toBe("impl");
+    expect(tagPlan("implement login")).toBe("impl+security");
+    expect(tagPlan("add users table migration")).toBe("impl+db");
+    const { chain } = buildChain("implement encrypted login");
+    expect(chain.length).toBeLessThanOrEqual(4);
+    expect(chain[chain.length - 1]).toContain("reviewer");
+  });
+  it("honors skip conditions", () => {
+    const r = new SkillRegistry([{ name: "x", description: "x", triggers: ["debug"], skipWhen: ["trivial"], steps: () => [] }]);
+    expect(r.suggest("debug this").map((s) => s.name)).toContain("x");
+    expect(r.suggest("debug this trivial typo").map((s) => s.name)).not.toContain("x");
+  });
+});
+
+describe("second-wave integrations (cloned sources)", () => {
+  it("flags strix-class patterns (go shell, ECB, TLS off, SRI)", () => {
+    const code = [
+      'exec.Command("sh", "-c", cmd)',
+      "const c = crypto.createCipher('aes-128-ecb', k)",
+      "const agent = new https.Agent({ rejectUnauthorized: false })",
+      '<script src="https://cdn.example.com/x.js"></script>',
+    ].join("\n");
+    const ids = scanCodeForDangerousPatterns(code).map((f) => f.patternId);
+    expect(ids).toContain("go-exec-shell");
+    expect(ids).toContain("weak-cipher");
+    expect(ids).toContain("tls-disabled");
+    expect(ids).toContain("script-no-sri");
+  });
+  it("loads custom patterns and rejects ReDoS-unsafe ones", () => {
+    expect(isReDoSSafe("password\\s*=\\s*.+")).toBe(true);
+    const { patterns, skipped } = loadCustomPatterns([
+      { id: "org-rule", title: "Org rule", severity: "medium", regex: "internal\\.example\\.com", message: "Internal host." },
+      { id: "evil", title: "Evil", severity: "medium", regex: "(a+)+$", message: "ReDoS." },
+    ]);
+    expect(patterns.map((p) => p.id)).toContain("org-rule");
+    expect(skipped).toContain("evil");
+  });
+  it("resolves specific child CWEs and validates closures", () => {
+    expect(resolveCwe("SQL injection via concatenated query")?.cwe).toBe("CWE-89");
+    const confirmed = validateFinding({ title: "SQL injection", poc: "1' OR '1'='1" });
+    expect(confirmed.closure).toBe("confirmed");
+    expect(confirmed.confidence).toBe("high");
+    const gap = validateFinding({ title: "mysterious auth thing" });
+    expect(gap.closure).toBe("open_proof_gap");
+    const out = validateFinding({ title: "XSS?", ruledOutBecause: "output encoded at app.ts:42 on every path" });
+    expect(out.closure).toBe("ruled_out");
+  });
+  it("selects review files with 6 gates", () => {
+    expect(selectFile("src/a.ts").keep).toBe(true);
+    expect(selectFile("logo.png").reason).toBe("binary");
+    expect(selectFile(".env").reason).toBe("secret");
+    expect(selectFile("pnpm-lock.yaml").reason).toBe("default-path");
+    expect(selectFile("src/a.test.ts").reason).toBe("default-path");
+    expect(selectFile("src/a.test.ts", { include: ["**/*.test.ts"] }).keep).toBe(true);
+  });
+  it("matches globs and resolves layered rules", () => {
+    expect(matchGlob("src/a.test.ts", "**/*.test.ts")).toBe(true);
+    expect(matchGlob("src/a.ts", "**/*.test.ts")).toBe(false);
+    const r = resolveRules("db/m.sql", { project: { entries: [{ path: "**/*.sql", rule: "No SELECT *." }] } });
+    expect(r.system).toHaveLength(0);
+    expect(r.user).toEqual(["No SELECT *."]);
+    const merged = resolveRules("db/m.sql", { project: { entries: [{ path: "**/*.sql", rule: "Extra.", mergeSystemRule: true }] } });
+    expect(merged.system.length).toBeGreaterThan(0);
+    expect(merged.user).toEqual(["Extra."]);
+  });
+  it("caps bundles and filters for precision", () => {
+    const big = { id: "b", paths: Array.from({ length: 25 }, (_, i) => `src/f${i}.ts`), kind: "source" as const, rules: [], reason: "x" };
+    expect(capBundleSize(big).length).toBe(3);
+    expect(filterForPrecision([{ severity: "low" }, { severity: "high" }, { severity: "low", evidence: "traced" }])).toHaveLength(2);
+  });
+  it("emits ponytail-tagged findings with net lines", () => {
+    const f = formatFinding({ tag: "native", file: "ui/picker.tsx", line: 4, what: "moment.js for one format", replacement: "Intl.DateTimeFormat, 0 deps" });
+    expect(f).toBe("ui/picker.tsx:L4: native: moment.js for one format. Intl.DateTimeFormat, 0 deps.");
+    expect(netLinesSaved([{ tag: "delete", file: "a", line: 1, what: "x", replacement: "nothing", linesRemoved: 40, linesAdded: 0 }])).toBe(40);
+    expect(mayDelete(0)).toBe(true);
+    expect(mayDelete(2)).toBe(false);
+    expect(AUDIT_HUNT.length).toBeGreaterThan(0);
+  });
+  it("enforces VERIFY_RED and exposes the checklist", () => {
+    const tdd = new TddCycle("sum");
+    expect(tdd.verifyRed({ failed: false, failedAsError: false, expectedMessage: false }).ok).toBe(false);
+    expect(tdd.verifyRed({ failed: true, failedAsError: false, expectedMessage: true }).ok).toBe(true);
+    expect(TDD_CHECKLIST.length).toBeGreaterThan(0);
+    expect(TDD_RED_FLAGS).toContain("quick fix for now");
+  });
+  it("tracks hypotheses and the 3-fix breaker", () => {
+    const d = new SystematicDebug("500");
+    d.observe("repro evidence");
+    d.advance();
+    d.hypothesize("null user", "stack points at session.ts:9");
+    d.observe("isolated");
+    d.advance();
+    d.observe("fix 1");
+    d.observe("fix 2");
+    d.observe("fix 3");
+    expect(d.fixAttempts()).toBe(3);
+    expect(d.needsArchitecturalReview()).toBe(true);
+  });
+  it("skips noise, strips private, budgets context", () => {
+    expect(shouldSkipObservation({ facts: [], narrative: "ok" }).skip).toBe(true);
+    expect(shouldSkipObservation({ facts: ["f"], narrative: "ok" }).skip).toBe(false);
+    expect(stripPrivate("a <private>secret</private> b")).toBe("a  b");
+    expect(estimateObservationTokens({ title: "t", subtitle: "s", narrative: "n", facts: ["f"] })).toBeGreaterThan(0);
+    expect(fitContextBudget([1, 2, 3, 4], String, 3)).toEqual([1, 2]);
+  });
+  it("gates first writes on facts", () => {
+    __resetGateForTests();
+    const g = gateWrite("edit", "src/a.ts");
+    expect(g.allowed).toBe(false);
+    expect(g.demands.length).toBeGreaterThan(0);
+    recordFacts("edit", "src/a.ts");
+    expect(gateWrite("edit", "src/a.ts").allowed).toBe(true);
+    expect(gateWrite("destructive-bash", "rm -rf /").demands.join(" ")).toContain("rollback");
+  });
+  it("blocks unverified completion claims", () => {
+    const bad = verifyCompletion([{ kind: "tests", evidence: "", passed: false }]);
+    expect(bad.ready).toBe(false);
+    const hedged = verifyCompletion([{ kind: "lint", evidence: "should be clean", passed: true }]);
+    expect(hedged.ready).toBe(false);
+    const good = verifyCompletion([
+      { kind: "tests", evidence: "46 passed, 0 failed", passed: true },
+      { kind: "build", evidence: "exit 0", passed: true },
+    ]);
+    expect(good.ready).toBe(true);
   });
 });

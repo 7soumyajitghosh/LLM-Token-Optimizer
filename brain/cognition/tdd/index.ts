@@ -39,8 +39,7 @@ export class TddCycle {
   }
 
   /** Record a test run outcome while in red/green. */
-  recordTestResult(passed: boolean, note = ""): void {
-    if (this.phase === "red") {
+  recordTestResult(passed: boolean, note = ""): void {    if (this.phase === "red") {
       if (!passed) {
         this.sawFailingTest = true;
         this.log("red", `Failing test observed (RED). ${note}`.trim());
@@ -109,7 +108,39 @@ export class TddCycle {
     return this.events.filter((e) => e.violation).map((e) => e.violation as string);
   }
 
+  /**
+   * VERIFY_RED checkpoint (superpowers): the failure must be a real failure
+   * (not an error), with the expected message, for the missing-feature cause.
+   * A passing test here means you are testing existing behavior — fix the test.
+   */
+  verifyRed(check: { failed: boolean; failedAsError: boolean; expectedMessage: boolean }): { ok: boolean; reason?: string } {
+    if (this.phase !== "red") return { ok: false, reason: "Not in RED phase." };
+    if (!check.failed) return { ok: false, reason: "Test passes — you are testing existing behavior. Fix the test." };
+    if (check.failedAsError) return { ok: false, reason: "Test errored instead of failing. Fix the test setup first." };
+    if (!check.expectedMessage) return { ok: false, reason: "Failure message is not the expected one. Fix the test." };
+    this.sawFailingTest = true;
+    this.log("red", "VERIFY_RED passed: genuine failure with expected message.");
+    return { ok: true };
+  }
+
   private log(phase: TddPhase, detail: string, violation?: string): void {
     this.events.push({ at: Date.now(), phase, detail, violation });
   }
 }
+
+/** Gate checklist every cycle must satisfy before commit. */
+export const TDD_CHECKLIST = [
+  "every function has a test",
+  "watched the test fail (RED) with the expected message",
+  "minimal production code only (GREEN)",
+  "full suite green with pristine output",
+  "edge cases covered",
+  "one behavior per test",
+] as const;
+
+/** Stop-words that signal guessing instead of TDD — halt and return to RED. */
+export const TDD_RED_FLAGS = [
+  "quick fix for now",
+  "just try changing",
+  "one more fix attempt",
+] as const;

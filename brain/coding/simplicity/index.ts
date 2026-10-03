@@ -107,3 +107,45 @@ export function detectOverEngineering(s: OverEngineeringSignals): OverEngineerin
   }
   return { score: Math.min(1, Math.round(score * 100) / 100), flags, deleteList };
 }
+
+// ---- Ponytail review format: tagged one-line findings ----
+
+export type SimplicityTag = "delete" | "stdlib" | "native" | "reuse" | "yagni" | "shrink";
+
+export interface SimplicityFinding {
+  tag: SimplicityTag;
+  file: string;
+  line: number;
+  what: string;
+  replacement: string;
+}
+
+/** Render `path:Lline: tag what. replacement.` — one line per finding. */
+export function formatFinding(f: SimplicityFinding): string {
+  return `${f.file}:L${f.line}: ${f.tag}: ${f.what}. ${f.replacement}.`;
+}
+
+/** Net-lines metric: sum(deleted − replacement) across findings. */
+export function netLinesSaved(findings: Array<SimplicityFinding & { linesRemoved: number; linesAdded: number }>): number {
+  return findings.reduce((n, f) => n + (f.linesRemoved - f.linesAdded), 0);
+}
+
+/** Audit hunt checklist: structural shapes that signal over-engineering. */
+export const AUDIT_HUNT = [
+  "single-implementation interfaces (inline until a second one exists)",
+  "factories with one product",
+  "wrappers that only delegate",
+  "files exporting one thing",
+  "dead flags and config nobody sets",
+  "hand-rolled stdlib equivalents",
+  "helpers duplicating a repo equivalent",
+  "abstractions with a single caller",
+] as const;
+
+/**
+ * Pre-delete rule: never emit delete: without repo-wide reference check
+ * (including tests, fixtures, string/dynamic references).
+ */
+export function mayDelete(referenceCount: number): boolean {
+  return referenceCount === 0;
+}

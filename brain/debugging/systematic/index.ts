@@ -36,6 +36,24 @@ export class SystematicDebug {
     this.evidence.push({ at: Date.now(), phase: this.phase, detail });
   }
 
+  /**
+   * Single-hypothesis checkpoint (superpowers Phase 3): exactly one
+   * "I think X because Y" hypothesis, smallest change, one variable.
+   * Tracked so fix attempts stay honest.
+   */
+  hypothesize(statement: string, because: string): void {
+    this.evidence.push({ at: Date.now(), phase: this.phase, detail: `Hypothesis: I think ${statement} because ${because}` });
+  }
+
+  /** Breaker: ≥3 failed fix rounds → stop and question the architecture, never attempt fix #4 blindly. */
+  fixAttempts(): number {
+    return this.evidence.filter((e) => e.phase === "fix").length;
+  }
+
+  needsArchitecturalReview(): boolean {
+    return this.fixAttempts() >= 3 && this.phase !== "done";
+  }
+
   private hasEvidence(phase: DebugPhase): boolean {
     return this.evidence.some((e) => e.phase === phase);
   }

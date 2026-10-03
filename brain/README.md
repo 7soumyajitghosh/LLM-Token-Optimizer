@@ -59,13 +59,13 @@ UI imports point directly at `brain/`.
 
 | Source | Concept adopted | Brain module |
 |---|---|---|
-| `affaan-m/ECC` | Continuous learning (wins → lessons), session summaries | `memory/learning` |
-| `obra/superpowers` | RED-GREEN-REFACTOR TDD, 4-phase systematic debugging, spec-first gate | `cognition/tdd`, `debugging/systematic`, `skills` (`spec-first`) |
-| `thedotmack/claude-mem` | Progressive-disclosure retrieval (index → details), typed observations | `MemoryManager.searchIndex`, `memory/learning` |
-| `DietrichGebert/ponytail` | YAGNI ladder, over-engineering delete-list, never-cut guards | `coding/simplicity` |
-| `usestrix/strix` | OWASP Top 10 coverage, CVSS-like severity ranking | `security/owasp` |
-| `alibaba/open-code-review` | Deterministic bundling + per-file rule matching (pipeline × agent) | `review/bundling` |
-| `anthropics/security-guidance` | Instant dangerous-pattern scan, inline-justification exclusions | `security/patterns` (+ `SecurityManager.scanCode`) |
+| `affaan-m/ECC` | Continuous learning (wins → lessons), session summaries, GateGuard fact-forcing, plan→chain compiler, skip-conditions | `memory/learning`, `cognition/gateguard`, `skills` (`tagPlan`/`buildChain`) |
+| `obra/superpowers` | RED-GREEN-REFACTOR TDD + VERIFY_RED, 4-phase systematic debugging + hypothesis + 3-fix breaker, spec-first gate, verification claim table | `cognition/tdd`, `debugging/systematic`, `testing/verification`, `skills` (`spec-first`) |
+| `thedotmack/claude-mem` | Progressive-disclosure retrieval (index → details), typed observations, fact/narrative/concept schema, noise gate, `<private>` stripping, context budget | `MemoryManager.searchIndex`, `memory/learning` |
+| `DietrichGebert/ponytail` | YAGNI ladder, over-engineering delete-list, never-cut guards, tagged findings (`delete/stdlib/native/reuse/yagni/shrink`), audit hunt, pre-delete rule | `coding/simplicity` |
+| `usestrix/strix` | OWASP coverage, CVSS-like ranking, specific-child CWEs, confirmed/ruled-out/proof-gap closures, counterevidence discipline | `security/owasp` |
+| `alibaba/open-code-review` | Deterministic bundling + 6-gate file selection, layered rules (flag>project>global>builtin), group caps, precision-over-recall filter | `review/bundling` |
+| `anthropics/security-guidance` | Instant dangerous-pattern scan (25+ patterns), custom patterns + ReDoS guard, inline-justification exclusions | `security/patterns` (+ `SecurityManager.scanCode`) |
 
 Skills-first entry: `SkillRegistry` in `brain/skills` (`tdd-cycle`,
 `systematic-debug`, `simplicity-review`, `owasp-review`,
