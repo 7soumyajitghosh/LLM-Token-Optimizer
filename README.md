@@ -1,11 +1,14 @@
 # LLM-Token-Optimizer
 
-Practical techniques and (soon) small utilities for reducing LLM token usage
-without hurting output quality: prompt trimming, smart chunking, caching,
-and cost estimation.
+Practical techniques and small, dependency-free utilities for reducing LLM
+token usage without hurting output quality: prompt trimming, smart chunking,
+budgeting, and cost estimation.
 
-> Status: early scaffold. The initial focus is documenting the approach;
-> reusable code helpers will follow.
+Built around one root: `brain/` — token helpers plus a unified AI Brain
+(coding, animation, reasoning, memory, agents, tools, model routing) that
+shares token budgets, context handling, and config.
+
+License: [Apache-2.0](LICENSE).
 
 ## Why bother optimizing tokens?
 
@@ -25,7 +28,7 @@ and cost estimation.
 4. **Set the output shape.** Ask for the exact format you need
    (e.g. "reply with a 5-item bullet list") to avoid over-long answers.
 5. **Measure.** Compare token counts and result quality before/after using
-   your provider's usage dashboard or a tokenizer for your model.
+   `estimateTokens` or your provider's usage dashboard.
 
 ### Mini example
 
@@ -42,6 +45,57 @@ After (lean):
 
 Same intent, a fraction of the tokens.
 
+## Install & verify
+
+Prerequisites: Node 18+, `pnpm` (repo has `pnpm-lock.yaml`).
+
+```bash
+pnpm install
+pnpm run typecheck   # tsc --noEmit
+pnpm run lint        # eslint
+pnpm test            # vitest run (tests live in brain/**/*.test.ts)
+pnpm run build       # tsc emit to dist/
+```
+
+## Code helpers (dependency-free)
+
+Token estimation is deliberately cheap and deterministic
+(~1 token per 4 characters). No external tokenizer dependency.
+
+```ts
+import { estimateTokens, truncateToTokens } from "./brain/context/tokenizer";
+import { chunkText, chunkTextBySentences } from "./brain/context/chunk-prompt";
+import { TokenManager } from "./brain/token";
+
+const n = estimateTokens("Summarize the article below in 5 bullets:");
+const short = truncateToTokens(longDoc, 2000);
+
+// Overlapping fixed-size windows for long inputs
+for (const chunk of chunkText(longDoc, 2000, 100)) {
+  // summarize or filter each chunk, then combine
+}
+
+// Sentence-aware chunking for more coherent windows
+const chunks = chunkTextBySentences(longDoc, 2000, 50);
+
+// Track token + cost budgets per task
+const tm = new TokenManager(32000, 0.5);
+const cost = tm.estimateCost(inputTokens, outputTokens, 0.0025, 0.01);
+if (tm.canAfford(inputTokens, outputTokens, cost)) {
+  tm.record(inputTokens, outputTokens, cost);
+}
+```
+
+Related modules:
+
+- `brain/context/tokenizer.ts` — `estimateTokens`, `truncateToTokens`
+- `brain/context/chunk-prompt.ts` — `chunkText`, `chunkTextBySentences`
+- `brain/context/trim-prompt.ts` — prompt-trimming variant of the same helpers
+- `brain/token/` — `TokenManager` (token + USD budgets, `estimateCost`,
+  `canAfford`, `record`, `remainingTokens`)
+- `brain/config/defaults.ts` — `loadConfig()` (`BRAIN_TOKEN_BUDGET`,
+  `BRAIN_COST_BUDGET_USD`, `BRAIN_MAX_TOKENS_PER_CALL`, ...)
+
 ## Token-saving techniques
 
 | Technique | When it helps | Notes |
@@ -52,19 +106,48 @@ Same intent, a fraction of the tokens.
 | Cache reusable context | Repeated prefixes | Use provider prompt-caching where offered. |
 | Retrieve, don't paste | Knowledge questions | Send only the top relevant passages (RAG). |
 | Drop low-signal history | Long chats | Keep the task + latest turns, summarize the rest. |
+| Enforce budgets | Every task | `TokenManager` + `BRAIN_TOKEN_BUDGET` / `BRAIN_COST_BUDGET_USD`. |
 
-## Planned scope
+## The unified `brain/`
 
-- Prompt-trimming checklist (remove redundancy before sending).
-- Text chunking guidance for long inputs.
-- Cost-estimation notes per provider.
-- Small, dependency-free helper scripts (planned).
+Token helpers are one part of a larger single-root Brain. See
+[`brain/README.md`](brain/README.md) and
+[`brain/ARCHITECTURE.md`](brain/ARCHITECTURE.md) for the full picture.
 
-## Roadmap
+```ts
+import { UnifiedBrain, getOrchestrator } from "./brain/index";
 
-1. Document token-saving techniques with examples.
-2. Add minimal helper scripts with tests.
-3. Add benchmarks showing tokens saved.
+const brain = new UnifiedBrain();
+await brain.run({ goal: "Explain model routing" });
+brain.analyzeAnimation("<div>...</div>");
+```
+
+Layout (highlights):
+
+- `core/` — `Brain`, `UnifiedBrain`, orchestrator, loops, task/cognitive state, ids
+- `context/` — tokenizer, trim/chunk helpers
+- `token/` — `TokenManager` budgets
+- `coding/`, `codebase/`, `debugging/`, `testing/`, `review/` — human-like coding pipeline
+- `animation/`, `perception/` — animation understanding / reconstruction
+- `cognition/`, `planner/`, `reasoning/`, `rag/` — planning, TDD, systematic debug
+- `memory/`, `models/`, `agents/`, `tools/` — shared services (no duplicates)
+- `security/`, `performance/`, `observability/`, `schemas/`, `config/`, `loops/`
+
+Config via env (see `loadConfig` in `brain/config/defaults.ts`):
+
+- `BRAIN_TOKEN_BUDGET`, `BRAIN_COST_BUDGET_USD`, `BRAIN_MAX_TOKENS_PER_CALL`
+- `BRAIN_DEFAULT_PROVIDER`, `BRAIN_MAX_STEPS`, `BRAIN_REQUEST_TIMEOUT_MS`
+- `BRAIN_ENABLE_SECURITY`, `BRAIN_ENABLE_EVAL`, `BRAIN_LOG_LEVEL`
+
+## Project structure
+
+```text
+brain/             # all intelligence: token helpers + unified Brain
+brain/__tests__/   # vitest suites (brain, coding-brain, unified-brain, ...)
+LICENSE            # Apache-2.0
+package.json       # scripts: typecheck / lint / test / build
+vitest.config.ts   # includes brain/**/*.test.ts
+```
 
 ## Contributing
 
@@ -72,8 +155,11 @@ Issues and small, focused pull requests are welcome. Please:
 
 - Keep changes small and explain the token/quality trade-off.
 - Include a before/after example when changing guidance.
+- Add/extend tests under `brain/__tests__/` for helper changes.
 - Do not commit API keys or private data.
 
 ## License
 
-TBD — will be added before the first code release.
+Apache-2.0 — see [LICENSE](LICENSE).
+
+Copyright 2026 Soumyajit Ghosh.
