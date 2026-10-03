@@ -61,7 +61,7 @@ export class SecurityManager {
     return { allowed: true, reason: "allowed" };
   }
 
-  checkRateLimit(actor: string, maxPerMinute = BRAIN_SECURITY_LIMITS.rateLimitPerMinute): boolean {
+  checkRateLimit(actor: string, maxPerMinute: number = BRAIN_SECURITY_LIMITS.rateLimitPerMinute): boolean {
     const now = Date.now();
     const window = (this.rateWindow.get(actor) ?? []).filter((t) => now - t < BRAIN_SECURITY_LIMITS.rateWindowMs);
     window.push(now);

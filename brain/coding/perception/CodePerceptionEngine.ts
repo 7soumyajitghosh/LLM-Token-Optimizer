@@ -4,7 +4,7 @@
 // Design: LanguageParser interface + registry; 8 languages supported.
 
 import type {
-  ParsedFile, ParsedImport, ParsedSymbol, SupportedLanguage,
+  ParsedFile, ParsedSymbol, SupportedLanguage,
 } from "../types";
 
 export interface LanguageParser {
