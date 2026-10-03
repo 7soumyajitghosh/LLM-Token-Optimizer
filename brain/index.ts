@@ -37,3 +37,10 @@ export {
   ANIMATION_TUNING,
 } from "./config/constants";
 export { getBrain, createBrain, runBrain } from "./api/index";
+export { scanCodeForDangerousPatterns, isPatternClean, DANGEROUS_PATTERNS, type PatternFinding } from "./security/patterns/index";
+export { OWASP_TOP_10, scoreSeverity, classifyOwasp, rankFindings, type ScoredFinding } from "./security/owasp/index";
+export { bundleFiles, matchReviewRules, type FileBundle } from "./review/bundling/index";
+export { SIMPLICITY_LADDER, NEVER_CUT, evaluateAgainstLadder, detectOverEngineering } from "./coding/simplicity/index";
+export { TddCycle, type TddPhase } from "./cognition/tdd/index";
+export { SystematicDebug, type DebugPhase } from "./debugging/systematic/index";
+export { SkillRegistry, type Skill, type SkillStep } from "./skills/index";
