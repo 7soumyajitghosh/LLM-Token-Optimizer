@@ -215,7 +215,7 @@ export class CodingBrain {
       ...stages.map((s, i) => `${i + 1}. ${s.title} [checks: ${s.checks.join(", ")}]`),
       ``,
       `Model routing: ${this.router.route(req.goal, "medium").map((r) => `${r.role}→${r.modelHint}`).join("; ")}`,
-      `Improvement passes this run: ${passes} (bounded; stops when no meaningful gain).`,
+      `Improvement passes this run: ${passes} (bounded; stops when no meaningful gain). Score: ${review.score.toFixed(2)} → ${currentScore.toFixed(2)}.`,
       `Guardrails honored: ${FORBIDDEN.slice(0, 5).join("; ")}… (full list via guardrails())`,
       `Inferred intent is marked as hypothesis where confidence < 1 — never stated as fact.`,
     ].join("\n");
